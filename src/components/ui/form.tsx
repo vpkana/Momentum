@@ -1,9 +1,10 @@
-import type {
-  InputHTMLAttributes,
-  LabelHTMLAttributes,
-  ReactNode,
-  SelectHTMLAttributes,
-  TextareaHTMLAttributes,
+import {
+  forwardRef,
+  type InputHTMLAttributes,
+  type LabelHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
 } from "react";
 import { cn } from "@/lib/utils";
 
@@ -53,17 +54,16 @@ const fieldBase =
   "focus:outline-none focus:ring-2 focus:ring-ring/60 focus:border-ring/60 " +
   "disabled:cursor-not-allowed disabled:opacity-50";
 
-export function Input({
-  className,
-  ...props
-}: InputHTMLAttributes<HTMLInputElement>) {
-  return (
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  ({ className, ...props }, ref) => (
     <input
+      ref={ref}
       className={cn(fieldBase, "h-9 px-3 text-sm", className)}
       {...props}
     />
-  );
-}
+  ),
+);
+Input.displayName = "Input";
 
 export function Textarea({
   className,

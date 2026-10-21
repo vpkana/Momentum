@@ -18,6 +18,9 @@ import { HOME_PATH, resolveBackAction } from "@/lib/back-policy";
 import { onAppResume } from "@/lib/lifecycle";
 import { FocusBanner } from "@/components/layout/focus-banner";
 import { FocusScreen } from "@/components/focus/focus-screen";
+import { EasyTouch } from "@/components/easy-touch/easy-touch";
+import { applyWidgetCompletions, syncWidgetsFromStore } from "@/lib/widget-sync";
+import { WIDGET_LAUNCH_EVENT } from "@/lib/widgets";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -87,6 +90,56 @@ function ShellInner({ children }: { children: ReactNode }) {
     };
   }, [ready, rolloverIfNewDay, syncNotifications, syncNative, markInteraction]);
 
+  // Home-screen widgets are a projection of the store, so they are refreshed
+  // after any data change (debounced), on resume, and after a widget tap wakes
+  // the app. Completions are applied after the day rollover, which also gives
+  // them their date context.
+  useEffect(() => {
+    if (!ready) return;
+    let disposed = false;
+    let debounce: number | null = null;
+
+    const reconcile = async () => {
+      await rolloverIfNewDay();
+      if (disposed) return;
+      await applyWidgetCompletions();
+      if (disposed) return;
+      await syncWidgetsFromStore();
+    };
+
+    void reconcile();
+
+    const scheduleSync = () => {
+      if (debounce !== null) window.clearTimeout(debounce);
+      debounce = window.setTimeout(() => {
+        debounce = null;
+        void syncWidgetsFromStore();
+      }, 700);
+    };
+
+    const unsubscribe = useStore.subscribe(scheduleSync);
+    const onWidgetLaunch = () => {
+      void reconcile();
+    };
+    window.addEventListener(WIDGET_LAUNCH_EVENT, onWidgetLaunch);
+
+    const offResume = onAppResume(() => {
+      void reconcile();
+    });
+    const id = window.setInterval(() => {
+      void syncWidgetsFromStore();
+    }, 60_000);
+
+    return () => {
+      disposed = true;
+      if (debounce !== null) window.clearTimeout(debounce);
+      window.clearInterval(id);
+      unsubscribe();
+      window.removeEventListener(WIDGET_LAUNCH_EVENT, onWidgetLaunch);
+      offResume();
+    };
+  }, [ready, rolloverIfNewDay]);
+
   return (
     <div className="min-h-dvh">
       <DesktopSidebar />
@@ -98,6 +151,7 @@ function ShellInner({ children }: { children: ReactNode }) {
         {/* Focus mode portals over everything, including the navigation. */}
         <FocusScreen />
         <MobileNav />
+        <EasyTouch />
       </div>
     </div>
   );

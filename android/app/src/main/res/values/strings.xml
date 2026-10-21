@@ -4,4 +4,39 @@
     <string name="title_activity_main">Momentum</string>
     <string name="package_name">app.web.momentum</string>
     <string name="custom_url_scheme">app.web.momentum</string>
+
+    <!-- Home-screen widgets -->
+    <string name="widget_today_label">Today</string>
+    <string name="widget_today_description">Today\'s plan with one-tap ticking.</string>
+    <string name="widget_next_label">Up next</string>
+    <string name="widget_next_description">The task to focus on next, with a direct start.</string>
+    <string name="widget_streak_label">Streak</string>
+    <string name="widget_streak_description">Your current streak and today\'s progress.</string>
+    <string name="widget_quick_add_label">Quick add</string>
+    <string name="widget_quick_add_description">Capture a task or tick one off without opening the app.</string>
+
+    <string name="widget_title_today">TODAY</string>
+    <string name="widget_title_next">UP NEXT</string>
+    <string name="widget_title_streak">STREAK</string>
+    <string name="widget_today_summary">%1$d of %2$d · %3$d%%</string>
+    <string name="widget_empty_today">Nothing planned — tap + to add</string>
+    <string name="widget_add_task">Add a task</string>
+    <string name="widget_complete_task">Complete task</string>
+    <string name="widget_start_focus">Start focus</string>
+    <string name="widget_next_ready">Ready when you are</string>
+    <string name="widget_next_count">%1$d/%2$d done</string>
+    <string name="widget_next_done_title">Day complete</string>
+    <string name="widget_next_done_meta">Every task is done. Nice work.</string>
+    <string name="widget_next_empty_title">Nothing planned</string>
+    <string name="widget_next_empty_meta">Tap to add your first task.</string>
+    <string name="widget_streak_days">day streak</string>
+    <string name="widget_streak_today">%1$d of %2$d done today</string>
+    <string name="widget_streak_no_tasks">No tasks planned today</string>
+    <string name="widget_quick_add_title">Add a task</string>
+    <string name="widget_quick_tick">Tick off tasks</string>
+    <string name="widget_quick_tick_count">Tick off · %1$d left</string>
+    <string name="widget_stale_title">Open Momentum</string>
+    <string name="widget_stale_message">Your plan updates when the app opens.</string>
+    <string name="widget_stale_button">Open app</string>
+    <string name="widget_stale_eyebrow">MOMENTUM</string>
 </resources>

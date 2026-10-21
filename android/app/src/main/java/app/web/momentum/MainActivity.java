@@ -1,6 +1,7 @@
 package app.web.momentum;
 
 import android.os.Bundle;
+import android.content.Intent;
 import android.content.res.Configuration;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebView;
@@ -14,12 +15,18 @@ import com.getcapacitor.BridgeActivity;
 
 import java.util.Locale;
 
+import app.web.momentum.widgets.MomentumWidgetsPlugin;
+import app.web.momentum.widgets.WidgetLaunch;
+
 public class MainActivity extends BridgeActivity {
 	private volatile float safeTopDp;
 	private volatile float safeBottomDp;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
+		// Must be registered before the bridge is created inside super.onCreate.
+		registerPlugin(MomentumWidgetsPlugin.class);
+		WidgetLaunch.capture(getApplicationContext(), getIntent());
 		super.onCreate(savedInstanceState);
 
 		WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
@@ -41,6 +48,18 @@ public class MainActivity extends BridgeActivity {
 
 		webView.addJavascriptInterface(new SystemUiBridge(), "MomentumSystemUi");
 		applySystemBarAppearance(isSystemDarkMode());
+	}
+
+	@Override
+	protected void onNewIntent(Intent intent) {
+		super.onNewIntent(intent);
+		if (intent == null) return;
+		setIntent(intent);
+		WidgetLaunch.capture(getApplicationContext(), intent);
+		if (getBridge() != null) {
+			// The app is already alive; tell it a widget action just arrived.
+			getBridge().triggerWindowJSEvent("momentumWidgetLaunch");
+		}
 	}
 
 	@Override

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Light widget palette, mirroring the app's light theme tokens. -->
+    <color name="widget_bg">#F6F6F6</color>
+    <color name="widget_tile">#FFFFFF</color>
+    <color name="widget_border">#DCE1DE</color>
+    <color name="widget_text">#1A2633</color>
+    <color name="widget_muted">#606E7B</color>
+    <color name="widget_primary">#2B6961</color>
+    <color name="widget_signal">#E45225</color>
+    <color name="widget_success">#386B55</color>
+    <color name="widget_track">#DDE1DF</color>
+    <color name="widget_on_signal">#FFFFFF</color>
+    <color name="widget_soft">#E9EDEA</color>
+</resources>

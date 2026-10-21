@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark widget palette, mirroring the app's dark theme tokens. -->
+    <color name="widget_bg">#0B0C0C</color>
+    <color name="widget_tile">#0D1921</color>
+    <color name="widget_border">#26323D</color>
+    <color name="widget_text">#EBF0ED</color>
+    <color name="widget_muted">#A2ADB8</color>
+    <color name="widget_primary">#5ED9BC</color>
+    <color name="widget_signal">#F58361</color>
+    <color name="widget_success">#3BCE8E</color>
+    <color name="widget_track">#1E262E</color>
+    <color name="widget_on_signal">#0B0C0C</color>
+    <color name="widget_soft">#18222C</color>
+</resources>

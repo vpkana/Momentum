@@ -32,6 +32,7 @@ import {
 import { ActivityFeed, StreakTile } from "@/components/profile/profile-stats";
 import { CustomSectionManager } from "@/components/profile/custom-section-manager";
 import { DataBackupSection } from "@/components/profile/data-backup";
+import { WidgetSettings } from "@/components/profile/widget-settings";
 import { TaskDetailModal } from "@/components/tasks/task-detail";
 import { Segmented } from "@/components/ui/segmented";
 import { ListShell, EmptyState, ListSkeleton } from "@/components/ui/list";
@@ -565,6 +566,8 @@ export function ProfileView() {
               </div>
             </div>
           </section>
+
+          <WidgetSettings />
 
           <section>
             <div className="mb-2 flex items-center gap-2">
