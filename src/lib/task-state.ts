@@ -12,7 +12,8 @@ import type { SectionKind, Task } from "./types";
  *
  * Recurring work (the Daily section and custom scheduled sections) comes back
  * every scheduled day: a completion belongs to the day it happened, not to the
- * task forever. One-off work (remainder / occasional) keeps its outcome.
+ * task forever. One-off work (deadlines / bucket list) keeps its outcome, and
+ * so does any dated task — a deadline is never reopened by the rollover.
  */
 
 /** Done = finished today's work OR permanently accomplished. */
@@ -53,6 +54,18 @@ export function isRecurringTask(task: Task): boolean {
   return false;
 }
 
+/**
+ * Whether a completed task's outcome is final.
+ *
+ * A due date is a deadline commitment: once that work is finished it must stay
+ * finished, even when the task was filed in a recurring section. Only undated
+ * daily/custom work reopens for the next occurrence; reopening a deadline is
+ * always a deliberate user action.
+ */
+function keepsCompletion(task: Task): boolean {
+  return !isRecurringTask(task) || Boolean(task.dueDate);
+}
+
 /** The local calendar date a task's completion belongs to, when known. */
 export function completionDayOf(task: Task): string | null {
   if (!task.completedAt) return null;
@@ -71,8 +84,8 @@ export function completionDayOf(task: Task): string | null {
 export function isTaskDoneOn(task: Task, key: string): boolean {
   if (task.status === "accomplished") return true;
   if (task.status === "active") return false;
-  // One-off work keeps its outcome permanently.
-  if (!isRecurringTask(task)) return true;
+  // One-off and deadline work keeps its outcome permanently.
+  if (keepsCompletion(task)) return true;
   const day = completionDayOf(task);
   // Unknown day (legacy rows) → assume it belongs to the current day and let
   // the rollover decide; never nag about something that may be done today.
@@ -86,10 +99,12 @@ export function isTaskDoneOn(task: Task, key: string): boolean {
  */
 export function needsNewDayReset(task: Task, today: string, loggedToday: boolean): boolean {
   if (task.status === "accomplished") return false;
-  // One-offs (remainder / occasional) keep their completion state.
+  // One-offs (deadline / bucket list) keep their completion state.
   if (!isRecurringTask(task)) return false;
 
   if (task.status === "completed") {
+    // A dated task is deadline work: completion is final, never rolled over.
+    if (task.dueDate) return false;
     const completedDay = completionDayOf(task);
     // A completion with no trustworthy timestamp is stale for recurring work.
     return completedDay === null || completedDay < today;

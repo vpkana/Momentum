@@ -6,8 +6,8 @@ export function sectionLabel(task: Task, sections: CustomSection[]): {
   icon?: string;
 } {
   if (task.section === "daily") return { title: "Daily" };
-  if (task.section === "remainder") return { title: "Reminder" };
-  if (task.section === "occasional") return { title: "Occasional" };
+  if (task.section === "remainder") return { title: "Deadline" };
+  if (task.section === "occasional") return { title: "Bucket list" };
   const s = sections.find((x) => x.id === task.customSectionId);
   return { title: s?.name ?? "Custom", icon: s?.icon };
 }

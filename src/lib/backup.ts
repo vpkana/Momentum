@@ -717,12 +717,12 @@ export function parseBackup(text: string): ParseResult {
   const hobbyIds = new Set(hobbies.rows.map((h) => h.id));
 
   // A custom task with no resolvable section has no schedule to recur on, so it
-  // would silently vanish from every list. Park it in the Reminder list instead
+  // would silently vanish from every list. Park it in the Deadlines list instead
   // — visible and actionable beats invisible.
   const repairedTasks = tasks.rows.map((t) => {
     if (t.section !== "custom") return t;
     if (t.customSectionId && sectionIds.has(t.customSectionId)) return t;
-    repairs.add("Moved custom tasks back to Reminder (their section was missing)");
+    repairs.add("Moved custom tasks back to Deadlines (their section was missing)");
     return { ...t, section: "remainder" as SectionKind, customSectionId: undefined };
   });
 

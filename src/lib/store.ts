@@ -5,8 +5,8 @@ import { uid } from "./utils";
 import { liveDayRec } from "./performance";
 import { applyRecoveryKinds } from "./activity";
 import { COOLDOWN_OPTIONS, NOTIFICATION_DEFAULTS } from "./config";
-import { planNotifications, notificationMessage } from "./notifications/engine";
-import { evaluateReminder, selectNativeSchedule } from "./notifications/planner";
+import { planNotifications } from "./notifications/engine";
+import { evaluateReminder, isQuietHours, selectNativeSchedule } from "./notifications/planner";
 import {
   DEFAULT_FOCUS_SETTINGS,
   advancePhase,
@@ -663,8 +663,9 @@ const REASON_COPY: Record<string, string> = {
   due_today: "Task is due today.",
   overdue: "Task is overdue.",
   scheduled_task: "A daily/section task is scheduled.",
-  weekly_checkin: "Weekly check-in for a Reminder task.",
-  monthly_checkin: "Gentle monthly check-in for an Occasional task.",
+  deadline_soon: "A deadline is approaching — countdown reminders are more frequent now.",
+  weekly_checkin: "Weekly check-in for a deadline task with no date.",
+  monthly_checkin: "Gentle twice-monthly check-in for a bucket-list item.",
   remaining_work: "Work is still planned for today.",
   nothing_due: "Nothing is due in the reminder horizon.",
   notifications_disabled: "Task reminders are switched off for this app.",
@@ -719,6 +720,70 @@ function describeDayPlan(
  * racing cancel/schedule calls and an out-of-sync `scheduledNotificationIds`.
  */
 let nativeSyncQueue: Promise<void> = Promise.resolve();
+/** Serializes browser delivery so parallel store mutations cannot double-post. */
+let webDeliveryQueue: Promise<void> = Promise.resolve();
+
+/**
+ * Deliver planner reminders in the browser.
+ *
+ * Native platforms own a real alarm queue (`syncNativeOnce`); the web has no
+ * alarm service, so a due reminder is shown while the app is open — the tab,
+ * a backgrounded tab, or the installed PWA — and the shared `firedReminders`
+ * stamp prevents the next sync from repeating it. Every reminder type goes
+ * through the same planner, so daily, deadline, bucket-list and custom-section
+ * work all deliver here.
+ */
+async function deliverWebReminders(get: GetFn): Promise<void> {
+  const run = webDeliveryQueue.then(() => deliverWebRemindersOnce(get));
+  webDeliveryQueue = run.catch(() => {});
+  await run;
+}
+
+async function deliverWebRemindersOnce(get: GetFn): Promise<void> {
+  if (nativeAvailable()) return;
+  const s = get();
+  if (!s.notificationSettings.enabled) return;
+  if ((await checkPermission()) !== "granted") return;
+
+  const now = new Date();
+  const today = dateKey(now);
+  const stored =
+    (await readMetaValue<Record<string, string>>("firedReminders")) ?? {};
+  const fired: Record<string, string> = {};
+  for (const [key, at] of Object.entries(stored)) {
+    if (key.endsWith(`:${today}`)) fired[key] = at;
+  }
+
+  const plan = evaluateReminder({
+    now,
+    tasks: s.tasks,
+    logs: s.logs,
+    sections: s.sections,
+    settings: s.notificationSettings,
+    lastMeaningfulActivityAt: s.notificationMeta.lastMeaningfulActivityAt,
+    firedKeys: new Set(Object.keys(fired)),
+    includePast: true,
+  });
+
+  const due = plan.records.filter(
+    (r) =>
+      r.at.getTime() <= now.getTime() + 30_000 &&
+      // A late ordinary reminder must not land inside quiet hours; important
+      // deadline cues keep their exemption, exactly as the planner intends.
+      (r.priority === "high" || !isQuietHours(now, s.notificationSettings)),
+  );
+  if (due.length === 0) return;
+
+  // Same-time cues are already grouped by the planner. Cap a stale backlog so
+  // opening the app late cannot produce a burst; every due key is stamped
+  // either way, so nothing repeats on the next sync.
+  const stamp = now.toISOString();
+  for (const r of due) fired[r.key] = stamp;
+  for (const r of due.slice(0, 4)) {
+    await showWebNotification(r.title, { body: r.body, tag: r.key });
+  }
+  await writeMetaValue("firedReminders", fired);
+}
 
 /**
  * One native sync: plan the reminder horizon, then reconcile Android's queue.
@@ -1655,6 +1720,11 @@ export const useStore = create<MomentumState>()((set, get) => ({
   syncNotifications: async () => {
     const s = get();
     const now = new Date();
+
+    // The browser has no alarm queue: the planner's due records are delivered
+    // here, on every tick and mutation, while the app is open.
+    if (!nativeAvailable()) await deliverWebReminders(get);
+
     const { creates, updates } = planNotifications({
       now,
       tasks: s.tasks,
@@ -1720,27 +1790,9 @@ export const useStore = create<MomentumState>()((set, get) => ({
     }
 
     // The in-app queue is a UI device: its rows feed the reminders strip and
-    // the snooze/dismiss controls. **Native delivery is owned exclusively by
-    // the planner** (`syncNativeNotifications`), so the old "post what just
-    // crossed into delivered" path is gone — that was a second, differently
-    // identified alarm for the same reminder, and the source of duplicate or
-    // burst notifications when the app happened to be open.
-
-    // On web environments, show external browser notifications for newly delivered cues
-    if (!nativeAvailable()) {
-      for (const n of newlyDelivered) {
-        const task = s.tasks.find((t) => t.id === n.taskId);
-        if (task) {
-          const body =
-            n.type === "next_task"
-              ? task.nextAction
-                ? `Next: ${task.nextAction}`
-                : notificationMessage(n, task.title)
-              : notificationMessage(n, task.title);
-          void showWebNotification(task.title, { body });
-        }
-      }
-    }
+    // the snooze/dismiss controls. External delivery — native alarms and
+    // browser notifications alike — is owned exclusively by the planner, so a
+    // single reminder can never arrive twice under two identities.
   },
 
   /**

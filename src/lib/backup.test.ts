@@ -726,7 +726,7 @@ describe("relational repair", () => {
     expect(byId.dangling.section).toBe("remainder");
     expect(byId.dangling.customSectionId).toBeUndefined();
     expect(byId.empty.section).toBe("remainder");
-    expect(parsed.summary.repairs.join(" ")).toMatch(/Moved custom tasks back to Reminder/i);
+    expect(parsed.summary.repairs.join(" ")).toMatch(/Moved custom tasks back to Deadlines/i);
   });
 
   it("never reports repairs for a healthy backup", () => {

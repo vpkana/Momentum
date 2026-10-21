@@ -6,7 +6,7 @@
  *
  * 1. **Steps adapt to the task type.** Daily and custom-section work inherits
  *    its schedule from the section, so the "When?" step disappears entirely.
- *    Only one-off work (Reminder / Occasional) is ever asked for a date.
+ *    Only one-off work (Deadlines / Bucket list) is ever asked for a date.
  * 2. **Optional stays optional.** Every value except the title has a default of
  *    "nothing", and skipped values are omitted from the input rather than
  *    written as empty rows.
@@ -76,13 +76,13 @@ export function sectionOptions(sections: CustomSection[]): SectionOption[] {
     { key: "daily", label: "Daily", hint: "Every day — habits and routines." },
     {
       key: "remainder",
-      label: "Reminder",
-      hint: "One-off work — a gentle weekly nudge until it's done.",
+      label: "Deadlines",
+      hint: "One-off work with a date — reminders increase as the deadline nears.",
     },
     {
       key: "occasional",
-      label: "Occasional",
-      hint: "Someday work — tracked, and dated if you give it a date.",
+      label: "Bucket list",
+      hint: "Someday work — a gentle check-in twice a month if it has no date.",
     },
   ];
   for (const s of sections) {
@@ -190,9 +190,9 @@ export function summaryLines(state: WizardState, sections: CustomSection[]): Sum
   const sectionLabel = state.sectionKey.startsWith("custom:")
     ? sections.find((s) => s.id === customSectionIdOf(state.sectionKey))?.name ?? "Custom"
     : state.sectionKey === "remainder"
-      ? "Reminder"
+      ? "Deadlines"
       : state.sectionKey === "occasional"
-        ? "Occasional"
+        ? "Bucket list"
         : "Daily";
   lines.push({ label: "Section", value: sectionLabel });
 

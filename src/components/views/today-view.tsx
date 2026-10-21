@@ -311,14 +311,16 @@ export function TodayView() {
       (h) => h.date === yesterdayKey && h.kind === "recovery",
     );
 
-    const openTotal = breakdown.groups.reduce(
-      (s, g) => s + g.tasks.filter((t) => t.status === "active").length,
-      0,
-    );
-    const doneTotal = breakdown.groups.reduce(
-      (s, g) => s + g.tasks.filter((t) => t.status === "completed").length,
-      0,
-    );
+    const openTotal =
+      breakdown.groups.reduce(
+        (s, g) => s + g.tasks.filter((t) => t.status === "active").length,
+        0,
+      ) + breakdown.specials.length;
+    const doneTotal =
+      breakdown.groups.reduce(
+        (s, g) => s + g.tasks.filter((t) => t.status === "completed").length,
+        0,
+      ) + breakdown.specialsDone.length;
 
     // "Up next": the first active task in section order, preferring one that
     // carries an explicit next action — that is the most actionable thing.
@@ -422,6 +424,7 @@ export function TodayView() {
                   <SpecialTaskBanner
                     tasks={derived.breakdown.specials}
                     onOpen={(t) => openTask(t.id)}
+                    onToggle={(t) => toggleTask(t.id)}
                   />
                 )}
 
@@ -482,14 +485,14 @@ export function TodayView() {
               className="flex items-center gap-1.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               <ListChecks className="h-3.5 w-3.5" strokeWidth={1.75} />
-              Reminder
+              Deadlines
             </Link>
             <Link
               href="/occasional"
               className="flex items-center gap-1.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               <Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />
-              Occasional
+              Bucket list
             </Link>
             {sections.map((section) => (
               <Link

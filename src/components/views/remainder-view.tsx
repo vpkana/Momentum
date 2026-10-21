@@ -41,8 +41,9 @@ export function RemainderView() {
   return (
     <PageFrame>
       <PageHeader
-        eyebrow="Backlog"
-        title="Reminder"          sub={
+        eyebrow="Countdown"
+        title="Deadlines"
+        sub={
           open.length > 0
             ? `${open.length} open task${open.length === 1 ? "" : "s"}`
             : undefined
@@ -59,8 +60,8 @@ export function RemainderView() {
       ) : open.length === 0 && done.length === 0 ? (
         <EmptyState
           icon={<LayoutList className="h-4 w-4" strokeWidth={1.75} />}
-          title="Nothing waiting here"
-          body="Tasks that need finishing but aren't daily habits live here — assignments, deadlines, one-off projects."
+          title="Nothing with a deadline"
+          body="One-off work with a date lives here. Momentum counts down as it approaches — a week out, 3 days, 1 day, then the due day."
           action={
             <Button variant="soft" size="sm" onClick={() => setFormOpen(true)}>
               <Plus className="h-3.5 w-3.5" /> Add a task

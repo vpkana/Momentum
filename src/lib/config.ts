@@ -35,11 +35,11 @@ export const NOTIFICATION_DEFAULTS = {
   dailyReminderTime: "09:00",
   /** One calm later check-in when the day's plan is still open. */
   followUpTime: "17:00",
-  /** Weekend day (0 = Sunday … 6 = Saturday) for Reminder-section work. */
+  /** Weekend day (0 = Sunday … 6 = Saturday) for undated deadline work. */
   remainderWeekday: 6,
   /** Local "HH:MM" — when that weekly reminder fires. */
   remainderTime: "10:00",
-  /** Days of the month for Occasional work with no due date. */
+  /** Days of the month for bucket-list items with no date. */
   occasionalDays: [1, 15] as number[],
   /** Local "HH:MM" — when that monthly reminder fires. */
   occasionalTime: "10:00",
@@ -47,7 +47,7 @@ export const NOTIFICATION_DEFAULTS = {
   taskReminders: true,
   /** Reminders for due-today special tasks. */
   specialTaskReminders: true,
-  /** Daily nudge for overdue remainder tasks. */
+  /** Daily nudge for overdue deadline tasks. */
   overdueReminders: true,
   /** Minutes a snooze pushes a notification back by. */
   snoozeMinutes: 30,

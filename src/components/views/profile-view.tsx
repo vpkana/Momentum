@@ -416,7 +416,11 @@ export function ProfileView() {
       ) : tab === "overview" ? (
         /* ----------------------------- Overview ----------------------------- */
         <div className="space-y-5">
-          <StreakTile current={data.streak} best={data.best} />
+          <StreakTile
+            current={data.streak}
+            best={data.best}
+            todayPct={data.live.percentage}
+          />
 
           <PeriodGrid
             today={data.live}
@@ -460,7 +464,7 @@ export function ProfileView() {
             <EmptyState
               icon={<Award className="h-4 w-4" strokeWidth={1.75} />}
               title="No accomplishments yet"
-              body="Finish a daily routine or a reminder task permanently from its details, and it will be kept here."
+              body="Finish a daily routine or a deadline task permanently from its details, and it will be kept here."
             />
           ) : (
             <ListShell>
@@ -479,7 +483,7 @@ export function ProfileView() {
                         {t.title}
                       </span>
                       <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                        {t.section === "daily" ? "Daily" : "Reminder"} · accomplished{" "}
+                        {t.section === "daily" ? "Daily" : "Deadline"} · accomplished{" "}
                         {monthYearLabel(t.accomplishedAt)}
                         {logged > 0 && (
                           <>
@@ -579,8 +583,8 @@ export function ProfileView() {
               <ToggleRow
                 checked={notificationSettings.specialTaskReminders}
                 onChange={(v) => setNotificationSettings({ specialTaskReminders: v })}
-                label="Due-today reminders"
-                sub="For tasks whose due date is today."
+                label="Deadline reminders"
+                sub="Countdowns as a due date approaches, plus the due day itself."
               />
               <ToggleRow
                 checked={notificationSettings.overdueReminders}
@@ -608,10 +612,10 @@ export function ProfileView() {
               <div className="flex flex-wrap items-center justify-between gap-3 py-2.5">
                 <div>
                   <p className="text-[13.5px] font-medium text-foreground">
-                    Reminder section check-in
+                    Undated deadline check-in
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    For Reminder tasks with no due date — once a week.
+                    For deadline tasks with no date — a gentle weekly check-in.
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -641,16 +645,16 @@ export function ProfileView() {
 
               <div className="flex flex-wrap items-center justify-between gap-3 py-2.5">
                 <div>
-                  <p className="text-[13.5px] font-medium text-foreground">Occasional check-in</p>
+                  <p className="text-[13.5px] font-medium text-foreground">Bucket list check-in</p>
                   <p className="text-xs text-muted-foreground">
-                    Twice a month (1st and 15th) for Occasional tasks with no due date.
+                    Twice a month (1st and 15th) for bucket-list items with no date.
                   </p>
                 </div>
                 <input
                   type="time"
                   value={notificationSettings.occasionalTime}
                   onChange={(e) => setNotificationSettings({ occasionalTime: e.target.value })}
-                  aria-label="Occasional reminder time"
+                  aria-label="Bucket list reminder time"
                   className="h-8 rounded-md border border-input bg-card px-2 font-mono text-xs tnum text-foreground focus:outline-none focus:ring-2 focus:ring-ring/60"
                 />
               </div>

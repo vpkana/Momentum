@@ -201,15 +201,42 @@ describe("Reminder-section tasks", () => {
     );
 
     expect(plan.records.map((r) => r.date)).toEqual([
+      "2026-09-15",
       "2026-09-16",
       "2026-09-17",
       "2026-09-18",
       "2026-09-19",
       "2026-09-20",
     ]);
-    expect(plan.records[0].type).toBe("due");
+    // One day before, the deadline countdown begins.
+    expect(plan.records[0].type).toBe("deadline");
     expect(plan.records[0].priority).toBe("high");
-    expect(plan.records[1].type).toBe("overdue");
+    expect(plan.records[0].body).toContain("1 day left");
+    expect(plan.records[1].type).toBe("due");
+    expect(plan.records[1].priority).toBe("high");
+    expect(plan.records[2].type).toBe("overdue");
+    expect(plan.records[2].body).toContain("1 day overdue");
+  });
+
+  it("counts down a week out, at 3 days and the day before — then stays on it", () => {
+    const plan = evaluateReminder(
+      ctx({
+        tasks: [
+          T({ id: "thesis", title: "Thesis", section: "remainder", dueDate: "2026-09-21" }),
+        ],
+      }),
+    );
+    const countdowns = plan.records.filter((r) => r.type === "deadline");
+
+    expect(countdowns.map((r) => r.date)).toEqual(["2026-09-14", "2026-09-18", "2026-09-20"]);
+    expect(countdowns.map((r) => r.body)).toEqual([
+      "7 days left — Thesis is due soon.",
+      "3 days left — Thesis is due soon.",
+      "1 day left — Thesis is due tomorrow.",
+    ]);
+    // The due day itself is HIGH; it sits just beyond this horizon, while the
+    // previous test covers it inside the window.
+    expect(plan.records.every((r) => r.date !== "2026-09-21")).toBe(true);
   });
 });
 
@@ -217,24 +244,28 @@ describe("Reminder-section tasks", () => {
 /* Occasional tasks                                                    */
 /* ------------------------------------------------------------------ */
 
-describe("Occasional tasks", () => {
-  it("get no automatic reminder when they have no date", () => {
+describe("Occasional (bucket list) tasks", () => {
+  it("get a calm check-in twice a month when they have no date", () => {
     const plan = evaluateReminder(
       ctx({ tasks: [T({ id: "trip", title: "Plan trip", section: "occasional" })] }),
     );
 
-    expect(plan.records).toHaveLength(0);
-    expect(plan.skipped.some((s) => s.reason === "no_date")).toBe(true);
+    expect(plan.records.map((r) => r.date)).toEqual(["2026-09-15"]);
+    expect(plan.records[0].type).toBe("monthly");
+    expect(plan.records[0].priority).toBe("low");
+    expect(plan.records[0].body).toContain("Bucket list check-in");
   });
 
-  it("never become a recurring nag while undated", () => {
+  it("never become a recurring nag — a missed check-in is not chased", () => {
     const plan = evaluateReminder(
       ctx({
         now: at(2026, 9, 15, 12),
         tasks: [T({ id: "trip", title: "Plan trip", section: "occasional" })],
       }),
     );
+    // The 15th's 10:00 check-in has passed; nothing is re-armed the same day.
     expect(plan.records).toHaveLength(0);
+    expect(plan.skipped.some((s) => s.reason === "moment_passed")).toBe(true);
   });
 
   it("use a due date when one exists", () => {
@@ -245,8 +276,13 @@ describe("Occasional tasks", () => {
         ],
       }),
     );
-    expect(plan.records[0].type).toBe("due");
-    expect(plan.records[0].date).toBe("2026-09-18");
+    expect(plan.records.find((r) => r.type === "due")?.date).toBe("2026-09-18");
+    // Dated items count down instead of getting the twice-monthly check-in.
+    expect(plan.records.filter((r) => r.type === "deadline").map((r) => r.date)).toEqual([
+      "2026-09-15",
+      "2026-09-17",
+    ]);
+    expect(plan.records.some((r) => r.type === "monthly")).toBe(false);
   });
 });
 
@@ -591,6 +627,19 @@ describe("time resolution and decisions", () => {
     expect(daily?.at.getTime()).toBe(at(2026, 9, 14, 15, 0).getTime() + CATCH_UP_LEAD_MINUTES * 60_000);
   });
 
+  it("keeps passed moments at their real time when the caller delivers them late", () => {
+    const plan = evaluateReminder(
+      ctx({
+        now: at(2026, 9, 14, 15, 0),
+        tasks: [T({ id: "a", title: "DSA" })],
+        includePast: true,
+      }),
+    );
+    const daily = on(plan, MON).find((r) => r.type === "daily");
+    expect(daily?.catchUp).toBe(false);
+    expect(daily?.at.getTime()).toBe(at(2026, 9, 14, 9, 0).getTime());
+  });
+
   it("produces nothing when reminders are switched off", () => {
     const plan = evaluateReminder(
       ctx({ tasks: [T({ id: "a", title: "DSA" })], settings: weekly({ enabled: false }) }),
@@ -679,11 +728,13 @@ describe("task type → reminder matrix", () => {
     expect(dayOf(plan, "2026-09-18")).toContain("due");
   });
 
-  it("Occasional without a date → no automatic reminder at all", () => {
+  it("Occasional without a date → twice-monthly check-in only", () => {
     const plan = evaluateReminder(
       ctx({ tasks: [T({ id: "a", title: "Trip", section: "occasional" })] }),
     );
-    expect(plan.records).toHaveLength(0);
+    expect(dayOf(plan, "2026-09-15")).toContain("monthly");
+    expect(dayOf(plan, MON)).toHaveLength(0);
+    expect(dayOf(plan, "2026-09-16")).toHaveLength(0);
   });
 
   it("Custom section → eligible only on days the section is active", () => {

@@ -5,18 +5,23 @@ import { ArrowRight, Star } from "lucide-react";
 import type { Task } from "@/lib/types";
 import { formatMinutes } from "@/lib/format";
 import { isTimedTask, remainingMinutesOf } from "@/lib/duration";
+import { CheckboxBox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 /**
  * Special (due-today) tasks. With several, they rotate quietly — one at a
- * time, understated, never dominating the screen.
+ * time, understated, never dominating the screen. Each can be ticked off
+ * directly, so deadline work counts toward today's progress like any other
+ * task.
  */
 export function SpecialTaskBanner({
   tasks,
   onOpen,
+  onToggle,
 }: {
   tasks: Task[];
   onOpen: (t: Task) => void;
+  onToggle: (t: Task) => void;
 }) {
   const [index, setIndex] = useState(0);
 
@@ -35,39 +40,53 @@ export function SpecialTaskBanner({
 
   return (
     <div className="anim-rise-in overflow-hidden rounded-2xl border border-signal/25 bg-signal-soft/45 shadow-soft">
-      <button
+      <div
         key={current.id}
-        type="button"
-        onClick={() => onOpen(current)}
-        className="anim-fade-up flex w-full items-center gap-3 px-4 py-3 text-left focus-visible:outline-none"
+        className="anim-fade-up flex items-center gap-2 py-3 pl-3 pr-4"
       >
-        <Star
-          className="h-[15px] w-[15px] shrink-0 text-signal"
-          fill="currentColor"
-          strokeWidth={0}
-        />
-        <span className="min-w-0 flex-1">
-          <span className="block font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] text-signal/90">
-            Due today
-          </span>
-          <span className="mt-0.5 flex items-center gap-2">
-            <span className="truncate text-[14px] font-semibold tracking-tight text-foreground">
-              {current.title}
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={false}
+          aria-label={`Complete ${current.title}`}
+          onClick={() => onToggle(current)}
+          className="shrink-0 rounded p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70"
+        >
+          <CheckboxBox checked={false} />
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpen(current)}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left focus-visible:outline-none"
+        >
+          <Star
+            className="h-[15px] w-[15px] shrink-0 text-signal"
+            fill="currentColor"
+            strokeWidth={0}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block font-mono text-[9.5px] font-medium uppercase tracking-[0.16em] text-signal/90">
+              Due today
             </span>
-            {isTimedTask(current) && (
-              <span className="shrink-0 font-mono text-[11.5px] tnum text-muted-foreground">
-                {formatMinutes(remainingMinutesOf(current))}
+            <span className="mt-0.5 flex items-center gap-2">
+              <span className="truncate text-[14px] font-semibold tracking-tight text-foreground">
+                {current.title}
+              </span>
+              {isTimedTask(current) && (
+                <span className="shrink-0 font-mono text-[11.5px] tnum text-muted-foreground">
+                  {formatMinutes(remainingMinutesOf(current))}
+                </span>
+              )}
+            </span>
+            {current.nextAction && (
+              <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                <ArrowRight className="h-3 w-3 shrink-0 text-signal/80" strokeWidth={1.75} />
+                <span className="truncate">{current.nextAction}</span>
               </span>
             )}
           </span>
-          {current.nextAction && (
-            <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-              <ArrowRight className="h-3 w-3 shrink-0 text-signal/80" strokeWidth={1.75} />
-              <span className="truncate">{current.nextAction}</span>
-            </span>
-          )}
-        </span>
-      </button>
+        </button>
+      </div>
       {tasks.length > 1 && (
         <div
           className="flex items-center justify-center gap-1 pb-2"

@@ -66,13 +66,17 @@ export function TodayTile({ rec }: { rec: DayRec }) {
 export function StreakTile({
   current,
   best,
+  todayPct,
 }: {
   current: number;
   best: number;
+  /** Today's completion percentage, or null on a rest day. */
+  todayPct: number | null;
 }) {
-  // The ring shows how close this run is to the all-time best. A first streak
-  // (best === current) reads as 100% — you are literally at your record.
-  const ratio = best > 0 ? Math.min(100, Math.round((current / best) * 100)) : 0;
+  // The ring is today's progress, not the streak's distance to the record. It
+  // therefore resets with the day instead of sitting at 100% for as long as the
+  // streak continues. Orange matches the streak flame rather than the accent.
+  const pct = todayPct === null ? null : Math.max(0, Math.min(100, todayPct));
   const toBeat = Math.max(0, best - current);
 
   return (
@@ -98,15 +102,20 @@ export function StreakTile({
             </p>
           </div>
           <ProgressRing
-            value={best > 0 ? ratio : null}
+            value={pct}
             size={46}
             stroke={5}
             className="anim-ring-in mt-0.5"
             trackClassName="stroke-signal-foreground/20"
-            label={`${current} of best ${best} days`}
+            progressClassName="stroke-signal"
+            label={
+              pct === null
+                ? "Nothing planned today"
+                : `${pct}% of today's plan complete`
+            }
           >
             <span className="tnum text-[10.5px] font-semibold text-signal-foreground">
-              {best > 0 ? `${ratio}%` : "—"}
+              {pct === null ? "—" : `${pct}%`}
             </span>
           </ProgressRing>
         </div>

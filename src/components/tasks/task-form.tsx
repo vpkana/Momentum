@@ -180,8 +180,8 @@ function CreateWizard({
             : state.sectionKey.startsWith("custom:")
               ? "It's waiting in its section."
               : state.sectionKey === "remainder"
-                ? "It's waiting in Reminder."
-                : "It's waiting in Occasional."}
+                ? "It's waiting in Deadlines."
+                : "It's waiting in your Bucket list."}
         </p>
       </div>
     );
@@ -345,8 +345,8 @@ function CreateWizard({
             title="When?"
             hint={
               state.sectionKey === "remainder"
-                ? "Optional — until it's done, this gets a gentle weekly nudge."
-                : "Optional — give it a date and Momentum will remind you that day."
+                ? "Optional — reminders count down as this date approaches. Without one, it gets a weekly check-in."
+                : "Optional — give it a date and Momentum will count down as it approaches."
             }
           />
           <Field label="Due date" hint="optional" htmlFor="tw-due">
@@ -432,7 +432,7 @@ function CreateWizard({
           </div>
           <p className="text-xs text-muted-foreground">
             {durationMinutes(state) === null
-              ? "No duration — fine for reminders and someday work."
+              ? "No duration — fine for deadlines and bucket-list work."
               : `${formatMinutes(durationMinutes(state)!)} planned for this task.`}
           </p>
         </div>

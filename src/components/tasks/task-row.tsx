@@ -25,14 +25,19 @@ function dueHint(task: Task): { text: string; tone: "overdue" | "signal" } | nul
   ].join("-");
 
   if (task.dueDate < todayKey) {
-    const d = parseKey(task.dueDate);
-    return {
-      text: `Overdue · ${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
-      tone: "overdue",
-    };
+    const days = Math.round(
+      (parseKey(todayKey).getTime() - parseKey(task.dueDate).getTime()) / 86_400_000,
+    );
+    return { text: `Overdue by ${days} day${days === 1 ? "" : "s"}`, tone: "overdue" };
   }
   if (task.dueDate === todayKey) return { text: "Due today", tone: "signal" };
-  return null;
+  const days = Math.round(
+    (parseKey(task.dueDate).getTime() - parseKey(todayKey).getTime()) / 86_400_000,
+  );
+  return {
+    text: days === 1 ? "1 day left" : `${days} days left`,
+    tone: "signal",
+  };
 }
 
 export function TaskRow({

@@ -120,6 +120,26 @@ self.addEventListener("fetch", (event) => {
   // Other same-origin GETs are left to the browser's HTTP cache.
 });
 
+/** Tapping a reminder brings the app forward (or opens it). */
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        const existing = clients.find((client) => {
+          try {
+            return sameOrigin(new URL(client.url));
+          } catch {
+            return false;
+          }
+        });
+        if (existing) return existing.focus();
+        return self.clients.openWindow("/");
+      }),
+  );
+});
+
 /**
  * One-time background warm-up: fetch every route's document, queue the JS/CSS
  * chunks it references, resolve font files referenced from those stylesheets,

@@ -17,7 +17,7 @@ export interface NavItem {
 
 /**
  * Primary destinations — shared by the desktop sidebar and mobile bottom
- * navigation. Daily / Reminder / Occasional live on Home, while hobbies and
+ * navigation. Daily / Deadlines / Bucket list live on Home, while hobbies and
  * notes have their own first-class space.
  */
 export const NAV_ITEMS: NavItem[] = [
@@ -51,13 +51,13 @@ export const NAV_ITEMS: NavItem[] = [
 export const LIST_LINKS: NavItem[] = [
   {
     href: "/remainder",
-    label: "Reminder",
+    label: "Deadlines",
     icon: ListChecks,
     match: (p) => p.startsWith("/remainder"),
   },
   {
     href: "/occasional",
-    label: "Occasional",
+    label: "Bucket list",
     icon: Sparkles,
     match: (p) => p.startsWith("/occasional"),
   },

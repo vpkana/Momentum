@@ -10,10 +10,11 @@
  * - **Daily tasks** are expected every day: one reminder at their time, plus at
  *   most one later day-level check-in. Never repeatedly, never after they are
  *   done.
- * - **Reminder tasks** are not daily: they get one weekly check-in while
- *   incomplete, and stop for good once completed.
- * - **Occasional tasks** use their due date. Without a date they get no
- *   automatic reminder at all — a someday task never becomes a recurring nag.
+ * - **Deadline tasks** count down as the date approaches: one nudge a week out,
+ *   another at 3 days, one the day before, the due day itself, then a daily
+ *   nudge while overdue. Without a date they get a gentle weekly check-in.
+ * - **Bucket-list tasks** use their due date when they have one; undated items
+ *   get one calm check-in twice a month, never a recurring nag.
  * - **Custom sections** own their recurrence: a task is only considered on days
  *   its section is active (`isSectionActiveOnDate`).
  * - **Explicit user reminders** (`task.remindAt`, or a time the user typed on
@@ -21,14 +22,14 @@
  * - **Motivational** nudges are rare, grounded in real remaining work, and
  *   never shame anyone.
  *
- * Priority: HIGH (user reminder / due / overdue) > MEDIUM (daily, section,
- * weekly) > LOW (occasional check-in). One reminder per task per day, highest
- * priority wins; reminders that would fire together are grouped instead of
- * becoming a barrage.
+ * Priority: HIGH (user reminder / deadline / due / overdue) > MEDIUM (daily,
+ * section, weekly) > LOW (bucket-list check-in). One reminder per task per day,
+ * highest priority wins; reminders that would fire together are grouped instead
+ * of becoming a barrage.
  */
 
 import { NOTIFICATION_DEFAULTS } from "../config";
-import { addDays, dateKey } from "../date";
+import { addDays, dateKey, parseKey } from "../date";
 import { formatMinutes } from "../format";
 import { isSectionActiveOnDate, scheduleForTask, scheduleOccursOn } from "../schedule";
 import { isTimedTask } from "../duration";
@@ -40,10 +41,12 @@ export type ReminderPriority = "high" | "medium" | "low";
 
 export type ReminderType =
   | "explicit"
+  | "deadline"
   | "due"
   | "overdue"
   | "daily"
   | "weekly"
+  | "monthly"
   | "follow_up";
 
 export const PRIORITY_RANK: Record<ReminderPriority, number> = {
@@ -105,27 +108,35 @@ export interface ReminderContext {
   firedKeys?: ReadonlySet<string>;
   /** In-app snoozes; they replace today's record for that task. */
   snoozes?: { taskId: string; at: Date }[];
+  /**
+   * Web delivery needs today's passed moments with their real time so the
+   * caller can show them late. Native arming leaves this off: a passed alarm is
+   * re-armed a few minutes ahead instead (see `CATCH_UP_LEAD_MINUTES`).
+   */
+  includePast?: boolean;
 }
 
 /** How many days the evaluator reasons about (today + 6). */
 export const REMINDER_HORIZON_DAYS = 6;
 /** Upper bound on evaluated records. */
-export const MAX_REMINDER_RECORDS = 40;
+export const MAX_REMINDER_RECORDS = 60;
 /**
  * How far ahead alarms are actually armed. The queue is deliberately not an
  * infinite stream: only the next meaningful reminders are handed to Android,
- * and each later evaluation arms the next one. 48 hours still covers "the app
- * was not opened today" without queueing a week of notifications.
+ * and each later evaluation arms the next one. 72 hours covers a whole weekend
+ * away from the app without queueing a week of notifications.
  */
-export const NATIVE_HORIZON_HOURS = 48;
+export const NATIVE_HORIZON_HOURS = 72;
 /** Hard cap on armed alarms. */
-export const MAX_NATIVE_RECORDS = 12;
+export const MAX_NATIVE_RECORDS = 24;
 /** When today's moment has passed, re-arm this far ahead. */
 export const CATCH_UP_LEAD_MINUTES = 15;
 /** Don't notify within this long after real activity. */
 export const ACTIVITY_COOLDOWN_MINUTES = 30;
 /** A low-priority reminder never fires this close to another one. */
 export const SUPPRESS_WINDOW_MINUTES = 90;
+/** Days-before-due milestones: frequency rises as the deadline nears. */
+export const DEADLINE_MILESTONES: readonly number[] = [7, 3, 1];
 
 const MIN = 60_000;
 
@@ -212,11 +223,16 @@ function occursOnDay(task: Task, day: Date, sections: CustomSection[]): boolean 
     return section ? isSectionActiveOnDate(section, day) : false;
   }
   // One-offs are considered when they are due, overdue, or (for unscheduled
-  // Reminder/Occasional work) on their gentle check-in day.
+  // deadline/bucket-list work) on their gentle check-in day.
   return true;
 }
 
-const SECTION_LEVEL_TYPES: ReminderType[] = ["daily", "weekly"];
+/** Calendar days from `fromKey` to `toKey` (negative when `toKey` is past). */
+function daysUntil(fromKey: string, toKey: string): number {
+  return Math.round((parseKey(toKey).getTime() - parseKey(fromKey).getTime()) / 86_400_000);
+}
+
+const SECTION_LEVEL_TYPES: ReminderType[] = ["daily", "weekly", "monthly"];
 
 interface TaskDayOutcome {
   type: ReminderType;
@@ -224,6 +240,8 @@ interface TaskDayOutcome {
   reason: string;
   at: Date;
   explicitTime: boolean;
+  /** Calendar days until due; negative once overdue. */
+  daysLeft?: number;
 }
 
 /**
@@ -255,20 +273,48 @@ function decideTaskDay(
   }
 
   const due = task.dueDate;
+  const daysLeft = due ? daysUntil(key, due) : null;
   const overdue = Boolean(due && due < key);
   const dueToday = due === key;
   const time = reminderTimeFor(task, settings, sections);
   const at = atLocal(day, time.hhmm);
   if (!at) return { skip: "bad_time" };
 
-  /* 2. Important due reminders — HIGH. */
+  /* 2. Important deadline reminders — HIGH. The frequency rises as the date
+   *    approaches: a week out, 3 days out, the day before, the due day, then
+   *    daily while it stays open. */
   if (overdue) {
     if (!settings.overdueReminders) return { skip: "overdue_reminders_off" };
-    return { type: "overdue", priority: "high", reason: "overdue", at, explicitTime: time.explicit };
+    return {
+      type: "overdue",
+      priority: "high",
+      reason: "overdue",
+      at,
+      explicitTime: time.explicit,
+      daysLeft: daysLeft ?? undefined,
+    };
   }
   if (dueToday) {
     if (!settings.specialTaskReminders) return { skip: "due_reminders_off" };
-    return { type: "due", priority: "high", reason: "due_today", at, explicitTime: time.explicit };
+    return {
+      type: "due",
+      priority: "high",
+      reason: "due_today",
+      at,
+      explicitTime: time.explicit,
+      daysLeft: 0,
+    };
+  }
+  if (daysLeft !== null && DEADLINE_MILESTONES.includes(daysLeft)) {
+    if (!settings.specialTaskReminders) return { skip: "due_reminders_off" };
+    return {
+      type: "deadline",
+      priority: "high",
+      reason: "deadline_soon",
+      at,
+      explicitTime: time.explicit,
+      daysLeft,
+    };
   }
 
   /* 3. Section-level reminders — MEDIUM for daily/custom/weekly, LOW monthly. */
@@ -280,7 +326,7 @@ function decideTaskDay(
   }
 
   if (task.section === "remainder") {
-    // Dated Reminder tasks are handled by the due/overdue rules above; only
+    // Dated deadline tasks are handled by the countdown rules above; only
     // undated ones get the weekly check-in.
     if (due) return { skip: "not_due" };
     if (day.getDay() !== settings.remainderWeekday) return { skip: "not_checkin_day" };
@@ -288,10 +334,13 @@ function decideTaskDay(
   }
 
   if (task.section === "occasional") {
-    // Dated Occasional work is handled by the due/overdue rules above. Undated
-    // work is never given an invented recurring reminder — a someday task must
-    // not quietly become a recurring nag. It waits for a real due date.
-    return { skip: due ? "not_due" : "no_date" };
+    // Dated bucket-list work is handled by the countdown rules above. Undated
+    // items get a calm twice-monthly check-in — enough to stay present without
+    // becoming a recurring nag.
+    if (due) return { skip: "not_due" };
+    const checkinDays = settings.occasionalDays ?? [];
+    if (!checkinDays.includes(day.getDate())) return { skip: "not_checkin_day" };
+    return { type: "monthly", priority: "low", reason: "monthly_checkin", at, explicitTime: time.explicit };
   }
 
   return { skip: "unsupported_section" };
@@ -381,20 +430,35 @@ function sectionIdOf(task: Task): string {
   return task.section;
 }
 
-function bodyFor(type: ReminderType, title: string, at: Date): string {
+function bodyFor(
+  type: ReminderType,
+  title: string,
+  at: Date,
+  daysLeft?: number,
+): string {
   switch (type) {
     case "explicit":
       return `Reminder — ${title}`;
+    case "deadline": {
+      const days = Math.max(1, daysLeft ?? 1);
+      return days === 1
+        ? `1 day left — ${title} is due tomorrow.`
+        : `${days} days left — ${title} is due soon.`;
+    }
     case "due":
       return `Due today — ${title}`;
-    case "overdue":
-      return `Still open — ${title} is overdue`;
+    case "overdue": {
+      const days = Math.max(1, -(daysLeft ?? 0));
+      return `${title} is ${days} day${days === 1 ? "" : "s"} overdue — still open.`;
+    }
     case "daily":
       return at.getHours() < 12
         ? `Good morning. Ready to make some progress on ${title}?`
         : `Time for ${title}`;
     case "weekly":
-      return `Weekly check-in — ${title}`;
+      return `Deadline check-in — ${title}`;
+    case "monthly":
+      return `Bucket list check-in — ${title}`;
     case "follow_up":
       return `Keep your momentum going — ${title} is still waiting.`;
   }
@@ -436,12 +500,18 @@ function groupReminders(records: PlannedReminder[]): PlannedReminder[] {
   }
 
   for (const { record, titles } of groups.values()) {
-    if (titles.length > 1) {
+    if (titles.length <= 1) continue;
+    const listed = titles.slice(0, 3).join(", ");
+    const more = titles.length > 3 ? ` and ${titles.length - 3} more` : "";
+    if (record.type === "weekly") {
+      record.title = "Deadline check-in";
+      record.body = `${titles.length} tasks are still waiting: ${listed}${more}`;
+    } else if (record.type === "monthly") {
+      record.title = "Bucket list check-in";
+      record.body = `${titles.length} items on your bucket list: ${listed}${more}`;
+    } else {
       record.title = "Today's plan";
-      const listed = titles.slice(0, 3).join(", ");
-      record.body = `${titles.length} tasks planned: ${listed}${
-        titles.length > 3 ? ` and ${titles.length - 3} more` : ""
-      }`;
+      record.body = `${titles.length} tasks planned: ${listed}${more}`;
     }
   }
   return out;
@@ -509,8 +579,10 @@ export function evaluateReminder(ctx: ReminderContext): ReminderPlan {
           skipped.push({ taskId: task.id, date: key, reason: "moment_passed" });
           continue;
         }
-        at = new Date(nowMs + CATCH_UP_LEAD_MINUTES * MIN);
-        catchUp = true;
+        if (!ctx.includePast) {
+          at = new Date(nowMs + CATCH_UP_LEAD_MINUTES * MIN);
+          catchUp = true;
+        }
       }
 
       dayRecords.push({
@@ -519,7 +591,7 @@ export function evaluateReminder(ctx: ReminderContext): ReminderPlan {
         sectionIds: [sectionIdOf(task)],
         date: key,
         title: task.title,
-        body: bodyFor(outcome.type, task.title, at),
+        body: bodyFor(outcome.type, task.title, at, outcome.daysLeft),
         at,
         type: outcome.type,
         priority: outcome.priority,

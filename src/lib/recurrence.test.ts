@@ -86,17 +86,19 @@ describe("date-scoped completion", () => {
     expect(completionDayOf(task)).toBe(DAY1);
   });
 
-  it("one-off remainder work keeps its completion permanently", () => {
+  it("one-off deadline work keeps its completion permanently", () => {
     const task = T({
       id: "report",
       title: "Finish the report",
       section: "remainder",
+      dueDate: DAY1,
       status: "completed",
       completedAt: at(DAY1, 18),
       remainingMinutes: 0,
     });
     expect(isTaskDoneOn(task, DAY2)).toBe(true);
     expect(needsNewDayReset(task, DAY2, false)).toBe(false);
+    expect(rolloverTasks([task], [], DAY2).changed).toHaveLength(0);
   });
 
   it("occasional (bucket-list) work is never reopened", () => {
@@ -108,6 +110,22 @@ describe("date-scoped completion", () => {
       completedAt: at(DAY1, 18),
       remainingMinutes: 0,
     });
+    expect(needsNewDayReset(task, DAY2, false)).toBe(false);
+    expect(rolloverTasks([task], [], DAY2).changed).toHaveLength(0);
+  });
+
+  it("a dated task keeps its completion even inside a recurring section", () => {
+    const task = T({
+      id: "thesis",
+      title: "Submit thesis",
+      section: "custom",
+      customSectionId: "research",
+      dueDate: DAY1,
+      status: "completed",
+      completedAt: at(DAY1, 18),
+      remainingMinutes: 0,
+    });
+    expect(isTaskDoneOn(task, DAY2)).toBe(true);
     expect(needsNewDayReset(task, DAY2, false)).toBe(false);
     expect(rolloverTasks([task], [], DAY2).changed).toHaveLength(0);
   });
