@@ -39,4 +39,15 @@
     <string name="widget_stale_message">Your plan updates when the app opens.</string>
     <string name="widget_stale_button">Open app</string>
     <string name="widget_stale_eyebrow">MOMENTUM</string>
+
+    <!-- System-wide easy touch -->
+    <string name="easy_touch_service_label">Momentum Easy touch</string>
+    <string name="easy_touch_channel_name">Easy touch</string>
+    <string name="easy_touch_channel_description">Keeps the floating Momentum bubble available over other apps.</string>
+    <string name="easy_touch_notification_title">Easy touch is on</string>
+    <string name="easy_touch_notification_text">Tap the edge handle to add or complete a task.</string>
+    <string name="easy_touch_notification_stop">Turn off</string>
+    <string name="easy_touch_bubble_description">Open Momentum quick actions</string>
+    <string name="easy_touch_today">Open Today</string>
+    <string name="easy_touch_overlay_failed">Momentum could not show the bubble. Allow \"Display over other apps\" and try again.</string>
 </resources>

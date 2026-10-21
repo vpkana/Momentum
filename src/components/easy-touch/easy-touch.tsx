@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useRouter } from "next/navigation";
+import { Capacitor } from "@capacitor/core";
 import { CheckCheck, Home, Plus, type LucideIcon } from "lucide-react";
 import { TaskFormModal } from "@/components/tasks/task-form";
 import { QuickCapture } from "@/components/easy-touch/quick-capture";
@@ -75,18 +76,17 @@ function rememberPosition(point: Point) {
 }
 
 /**
- * "Easy touch": a movable shortcut that makes capture and completion reachable
- * from anywhere without opening the full task flow.
+ * "Easy touch": quick capture and completion from anywhere.
  *
- * The bubble follows the same rule as Android's assistive touch: it lives at an
- * edge, remembers where it was put, and never intercepts scrolling (the drag
- * handler only claims the pointer after movement starts). The menu and both
- * sheets register on the modal stack, so the Android back button closes the
- * topmost layer instead of leaving the app.
+ * On Android the bubble itself is the native system overlay (EasyTouchService);
+ * this component deliberately renders no in-app bubble there, but it still owns
+ * the deep links the overlay and widgets send into the app. On the web the
+ * bubble is rendered here, following the same edge-docking rules.
  */
 export function EasyTouch() {
   const mounted = useMounted();
   const router = useRouter();
+  const inAppBubble = Capacitor.getPlatform() !== "android";
   const ready = useStore((state) => state.ready);
 
   const [pos, setPos] = useState<Point | null>(null);
@@ -114,14 +114,14 @@ export function EasyTouch() {
   useModalStack("easy-touch-menu", "Quick actions", closeMenu, menuOpen);
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || !inAppBubble) return;
     applyPosition(readPosition() ?? defaultPosition());
     const onResize = () => {
       if (posRef.current) applyPosition(clampPosition(posRef.current));
     };
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
-  }, [mounted, applyPosition]);
+  }, [mounted, inAppBubble, applyPosition]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -150,6 +150,11 @@ export function EasyTouch() {
           setSheet(null);
           setFormOpen(false);
           router.replace("/profile");
+          break;
+        case "open-today":
+          setSheet(null);
+          setFormOpen(false);
+          router.replace("/");
           break;
         case "focus-task": {
           setSheet(null);
@@ -277,28 +282,34 @@ export function EasyTouch() {
     router.replace("/");
   };
 
-  if (!mounted || !pos) return null;
+  if (!mounted) return null;
 
-  const menuTop = Math.max(
-    12,
-    Math.min(
-      pos.y + BUBBLE + 10 + MENU_HEIGHT > window.innerHeight - 16
-        ? pos.y - MENU_HEIGHT - 10
-        : pos.y + BUBBLE + 10,
-      window.innerHeight - MENU_HEIGHT - 12,
-    ),
-  );
-  const menuLeft = Math.max(
-    12,
-    Math.min(
-      pos.x + BUBBLE / 2 - MENU_WIDTH / 2,
-      window.innerWidth - MENU_WIDTH - 12,
-    ),
-  );
+  // On Android the sheets still have to mount: the native bubble's menu opens
+  // them through the widget launch bridge. Only the bubble itself is web-only.
+  const menuTop = pos
+    ? Math.max(
+      12,
+      Math.min(
+        pos.y + BUBBLE + 10 + MENU_HEIGHT > window.innerHeight - 16
+          ? pos.y - MENU_HEIGHT - 10
+          : pos.y + BUBBLE + 10,
+        window.innerHeight - MENU_HEIGHT - 12,
+      ),
+    )
+    : 0;
+  const menuLeft = pos
+    ? Math.max(
+      12,
+      Math.min(
+        pos.x + BUBBLE / 2 - MENU_WIDTH / 2,
+        window.innerWidth - MENU_WIDTH - 12,
+      ),
+    )
+    : 0;
 
   return (
     <>
-      {menuOpen && (
+      {inAppBubble && pos && menuOpen && (
         <>
           <div
             className="anim-fade-in fixed inset-0 z-30 bg-black/15 lg:hidden"
@@ -318,35 +329,37 @@ export function EasyTouch() {
         </>
       )}
 
-      <button
-        type="button"
-        aria-label={menuOpen ? "Close quick actions" : "Open quick actions"}
-        aria-expanded={menuOpen}
-        aria-haspopup="menu"
-        onPointerDown={startDrag}
-        onPointerMove={moveDrag}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        onClick={toggleMenu}
-        onContextMenu={(event) => event.preventDefault()}
-        className={cn(
-          "fixed z-40 grid h-[52px] w-[52px] touch-none select-none place-items-center rounded-full",
-          "border border-border/80 bg-card/95 text-signal shadow-lift backdrop-blur-xl",
-          "transition-[transform,background-color,color] duration-200 active:scale-95",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-          "lg:hidden",
-          menuOpen && "bg-card text-foreground",
-        )}
-        style={{ left: pos.x, top: pos.y }}
-      >
-        <Plus
+      {inAppBubble && pos && (
+        <button
+          type="button"
+          aria-label={menuOpen ? "Close quick actions" : "Open quick actions"}
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          onPointerDown={startDrag}
+          onPointerMove={moveDrag}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onClick={toggleMenu}
+          onContextMenu={(event) => event.preventDefault()}
           className={cn(
-            "h-6 w-6 transition-transform duration-200",
-            menuOpen && "rotate-45",
+            "fixed z-40 grid h-[52px] w-[52px] touch-none select-none place-items-center rounded-full",
+            "border border-border/80 bg-card/95 text-signal shadow-lift backdrop-blur-xl",
+            "transition-[transform,background-color,color] duration-200 active:scale-95",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            "lg:hidden",
+            menuOpen && "bg-card text-foreground",
           )}
-          strokeWidth={1.9}
-        />
-      </button>
+          style={{ left: pos.x, top: pos.y }}
+        >
+          <Plus
+            className={cn(
+              "h-6 w-6 transition-transform duration-200",
+              menuOpen && "rotate-45",
+            )}
+            strokeWidth={1.9}
+          />
+        </button>
+      )}
 
       <QuickCapture
         open={sheet === "capture"}

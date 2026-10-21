@@ -76,6 +76,25 @@
             android:name=".widgets.WidgetActionReceiver"
             android:exported="false" />
 
+        <service
+            android:name=".easytouch.EasyTouchService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:label="@string/easy_touch_service_label">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Floating quick-capture bubble that the user enables from Momentum settings." />
+        </service>
+
+        <receiver
+            android:name=".easytouch.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -92,6 +111,12 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 13+ local notifications (Capacitor Local Notifications). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- System-wide easy touch: floating bubble + the foreground service that
+         keeps it alive while Momentum is in the background. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- SCHEDULE_EXACT_ALARM is merged in by the Capacitor Local Notifications
          plugin. Momentum does NOT depend on it: reminders are scheduled as
          inexact alarms, which Android always delivers without special access.

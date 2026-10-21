@@ -15,6 +15,8 @@ import com.getcapacitor.BridgeActivity;
 
 import java.util.Locale;
 
+import app.web.momentum.easytouch.EasyTouchService;
+import app.web.momentum.easytouch.MomentumEasyTouchPlugin;
 import app.web.momentum.widgets.MomentumWidgetsPlugin;
 import app.web.momentum.widgets.WidgetLaunch;
 
@@ -26,8 +28,13 @@ public class MainActivity extends BridgeActivity {
 	public void onCreate(Bundle savedInstanceState) {
 		// Must be registered before the bridge is created inside super.onCreate.
 		registerPlugin(MomentumWidgetsPlugin.class);
+		registerPlugin(MomentumEasyTouchPlugin.class);
 		WidgetLaunch.capture(getApplicationContext(), getIntent());
 		super.onCreate(savedInstanceState);
+
+		// A sticky foreground service does not survive a force stop or process
+		// death by itself; reopen the bubble as soon as the app is opened again.
+		EasyTouchService.ensureRunning(getApplicationContext());
 
 		WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 		WebView webView = getBridge().getWebView();

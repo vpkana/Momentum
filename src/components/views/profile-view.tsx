@@ -33,6 +33,7 @@ import { ActivityFeed, StreakTile } from "@/components/profile/profile-stats";
 import { CustomSectionManager } from "@/components/profile/custom-section-manager";
 import { DataBackupSection } from "@/components/profile/data-backup";
 import { WidgetSettings } from "@/components/profile/widget-settings";
+import { EasyTouchSettings } from "@/components/profile/easy-touch-settings";
 import { TaskDetailModal } from "@/components/tasks/task-detail";
 import { Segmented } from "@/components/ui/segmented";
 import { ListShell, EmptyState, ListSkeleton } from "@/components/ui/list";
@@ -568,6 +569,8 @@ export function ProfileView() {
           </section>
 
           <WidgetSettings />
+
+          <EasyTouchSettings />
 
           <section>
             <div className="mb-2 flex items-center gap-2">

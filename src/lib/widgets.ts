@@ -29,6 +29,7 @@ export type WidgetLaunchType =
   | "quick-add"
   | "quick-tick"
   | "open-profile"
+  | "open-today"
   | "focus-task";
 
 export interface WidgetLaunchAction {

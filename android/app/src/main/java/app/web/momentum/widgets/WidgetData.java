@@ -28,6 +28,7 @@ public final class WidgetData {
     public static final String LAUNCH_QUICK_ADD = "quick-add";
     public static final String LAUNCH_QUICK_TICK = "quick-tick";
     public static final String LAUNCH_OPEN_PROFILE = "open-profile";
+    public static final String LAUNCH_OPEN_TODAY = "open-today";
     public static final String LAUNCH_FOCUS_TASK = "focus-task";
     public static final String EXTRA_LAUNCH_ACTION = "momentum_widget_action";
     public static final String EXTRA_LAUNCH_TASK = "momentum_widget_launch_task_id";
